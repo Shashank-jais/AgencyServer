@@ -151,7 +151,6 @@ export async function getAgencyTotal(request, response) {
   }
 }
 
-
 export async function getAgencyRecordByAgencyId(request, response) {
   try {
     const { agencyId } = request.body;
@@ -184,20 +183,21 @@ export async function getAgencyRecordByAgencyId(request, response) {
 
     const formattedAgencyData = agencyData.map((record) => ({
       ...record.toObject(),
-      bhariye: parseFloat(record.bhariye.toString()), 
+      bhariye: parseFloat(record.bhariye.toString()),
     }));
 
-    const formattedAgencyDifferenceData = agencyDifferenceData.map((record) => ({
-      ...record.toObject(),
-      weight: parseFloat(record.weight.toString()), 
-      totalWeight: parseFloat(record.totalWeight.toString()), 
-      rate: parseFloat(record.rate.toString()), 
-      value: parseFloat(record.value.toString()), 
-      amount: parseFloat(record.amount.toString()), 
-      difference: parseFloat(record.difference.toString()), 
-    }));
+    const formattedAgencyDifferenceData = agencyDifferenceData.map(
+      (record) => ({
+        ...record.toObject(),
+        weight: parseFloat(record.weight.toString()),
+        totalWeight: parseFloat(record.totalWeight.toString()),
+        rate: parseFloat(record.rate.toString()),
+        value: parseFloat(record.value.toString()),
+        amount: parseFloat(record.amount.toString()),
+        difference: parseFloat(record.difference.toString()),
+      }),
+    );
 
-    
     return response.status(200).json({
       message: `Records fetched successfully for agencyId ${agencyId}`,
       agencyData: formattedAgencyData,
@@ -206,7 +206,71 @@ export async function getAgencyRecordByAgencyId(request, response) {
       success: true,
     });
   } catch (error) {
-    console.error(`Error in fetching record for the agencyId ${agencyId}: `, error);
+    console.error(
+      `Error in fetching record for the agencyId ${agencyId}: `,
+      error,
+    );
+    response.status(500).json({
+      error: "Internal Server Error",
+      success: false,
+    });
+  }
+}
+
+export async function updateAgencyRecord(request, response) {
+  try {
+    const { agencyId, agencyData, agencyDifferenceData } = request.body;
+
+    // Validate input data
+    if (!agencyId || !agencyData || !agencyDifferenceData) {
+      return response.status(400).json({
+        error:
+          "Missing required fields: agencyId, agencyData, or agencyDifferenceData",
+        success: false,
+      });
+    }
+
+    // Update the Agency collection
+    const AgencyModel = createAgencyModel(agencyId);
+    const existingAgency = await AgencyModel.findOne({ date: agencyData.date });
+    if (!existingAgency) {
+      return response.status(404).json({
+        error: "Record not found for this date in the Agency collection",
+        success: false,
+      });
+    }
+
+    await AgencyModel.updateOne(
+      { date: agencyData.date },
+      { $set: agencyData },
+    );
+
+    // Update the AgencyDifference collection
+    const AgencyDifferenceModel = createAgencyDifferenceModel(agencyId);
+    const existingAgencyDifference = await AgencyDifferenceModel.findOne({
+      date: agencyDifferenceData.date,
+    });
+    if (!existingAgencyDifference) {
+      return response.status(404).json({
+        error:
+          "Record not found for this date in the Agency Difference collection",
+        success: false,
+      });
+    }
+
+    await AgencyDifferenceModel.updateOne(
+      { date: agencyDifferenceData.date },
+      { $set: agencyDifferenceData },
+    );
+
+    // Return success response
+    return response.status(200).json({
+      message: "Records updated successfully",
+      error: false,
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error in updating record for the agencyId:", error);
     response.status(500).json({
       error: "Internal Server Error",
       success: false,

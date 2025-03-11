@@ -13,7 +13,7 @@ dotenv.config()
 const app = express();
 app.use(cors({
   credentials:true,
-  origin:process.env.FRONTEND_URL
+  origin:"http://localhost:5173"
 }));
 
 app.use(express.json())
@@ -33,6 +33,7 @@ app.get("/",(request,response)=>{
   })
   
 })
+
 app.use('/api',routes)
 
 
