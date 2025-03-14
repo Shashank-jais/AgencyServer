@@ -19,7 +19,11 @@ export async function createUser(req, res) {
     if (existingUser) {
       return res
         .status(400)
-        .json({ error: "User with this mobile number already exists" });
+        .json({
+          message: "User with this mobile number already exists",
+          error: true,
+          success: false,
+        });
     }
     const salt = await bCrypt.genSalt(10);
     const hashedPassword = await bCrypt.hash(password, salt);
@@ -38,10 +42,16 @@ export async function createUser(req, res) {
     res.status(201).json({
       message: "User created successfully",
       userId: newUser._id,
+      error: false,
+      success: true,
     });
   } catch (error) {
     console.error("Error creating user:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({
+      error: "Internal Server Error",
+      error: true,
+      success: false,
+    });
   }
 }
 
@@ -108,33 +118,61 @@ export async function loginUser(req, res) {
 }
 
 
-export async function logoutController(request,response){
-    try {
-        const userid = request.userId 
+export async function logoutController(request, response) {
+  try {
+    const userid = request.userId
 
-        const cookiesOption = {
-            httpOnly : true,
-            secure : true,
-            sameSite : "None"
-        }
-
-        response.clearCookie("accessToken",cookiesOption)
-        response.clearCookie("refreshToken",cookiesOption)
-
-        const removeRefreshToken = await UserModel.findByIdAndUpdate(userid,{
-            refresh_token : ""
-        })
-
-        return response.json({
-            message : "Logout successfully",
-            error : false,
-            success : true
-        })
-    } catch (error) {
-        return response.status(500).json({
-            message : error.message || error,
-            error : true,
-            success : false
-        })
+    const cookiesOption = {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None"
     }
+
+    response.clearCookie("accessToken", cookiesOption)
+    response.clearCookie("refreshToken", cookiesOption)
+
+    const removeRefreshToken = await UserModel.findByIdAndUpdate(userid, {
+      refresh_token: ""
+    })
+
+    return response.json({
+      message: "Logout successfully",
+      error: false,
+      success: true
+    })
+  } catch (error) {
+    return response.status(500).json({
+      message: error.message || error,
+      error: true,
+      success: false
+    })
+  }
 }
+
+
+export async function allUser(req, res) {
+  try {
+    const users = await UserModel.find();
+
+    if (users.length === 0) {
+      return res.status(400).json({
+        message: "No users found",
+        error: true,
+        success: false,
+      });
+    }
+
+    return res.status(200).json({
+      message: "All users fetched successfully",
+      users,
+      error: false,
+      success: true,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: error.message || "Internal Server Error",
+      error: true,
+      success: false,
+    });
+  }
+};

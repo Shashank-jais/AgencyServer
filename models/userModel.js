@@ -23,8 +23,7 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
     centerName: {
-      type: Array,
-      default: [],
+      type: String,
       required: [true, "Provide center name"],
     },
     password: {
