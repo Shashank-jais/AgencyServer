@@ -151,23 +151,110 @@ export async function getAgencyTotal(request, response) {
   }
 }
 
+// export async function getAgencyRecordByAgencyId(request, response) {
+//   try {
+//     const { agencyId } = request.body;
+
+//     // Check if the collections exist for the given agencyId
+//     const collections = await mongoose.connection.db
+//       .listCollections()
+//       .toArray();
+
+//     const agencyCollectionExists = collections.some(
+//       (col) => col.name === `agency_${agencyId}`,
+//     );
+//     const agencyDifferenceCollectionExists = collections.some(
+//       (col) => col.name === `agencydifference_${agencyId}`,
+//     );
+
+//     // If either collection does not exist, return an error
+//     if (!agencyCollectionExists || !agencyDifferenceCollectionExists) {
+//       return response.status(404).json({
+//         error: `Collections for agencyId ${agencyId} do not exist`,
+//         success: false,
+//       });
+//     }
+
+//     const AgencyModel = createAgencyModel(agencyId);
+//     const agencyData = await AgencyModel.find().exec();
+
+//     const AgencyDifferenceModel = createAgencyDifferenceModel(agencyId);
+//     const agencyDifferenceData = await AgencyDifferenceModel.find().exec();
+
+//     const formattedAgencyData = agencyData.map((record) => ({
+//       ...record.toObject(),
+//       bhariye: parseFloat(record.bhariye.toString()),
+//     }));
+
+//     const formattedAgencyDifferenceData = agencyDifferenceData.map(
+//       (record) => ({
+//         ...record.toObject(),
+//         weight: parseFloat(record.weight.toString()),
+//         totalWeight: parseFloat(record.totalWeight.toString()),
+//         rate: parseFloat(record.rate.toString()),
+//         value: parseFloat(record.value.toString()),
+//         amount: parseFloat(record.amount.toString()),
+//         difference: parseFloat(record.difference.toString()),
+//       }),
+//     );
+
+//     return response.status(200).json({
+//       message: `Records fetched successfully for agencyId ${agencyId}`,
+//       agencyData: formattedAgencyData,
+//       agencyDifferenceData: formattedAgencyDifferenceData,
+//       error: false,
+//       success: true,
+//     });
+//   } catch (error) {
+//     console.error(
+//       `Error in fetching record for the agencyId ${agencyId}: `,
+//       error,
+//     );
+//     response.status(500).json({
+//       error: "Internal Server Error",
+//       success: false,
+//     });
+//   }
+// }
+
+
 export async function getAgencyRecordByAgencyId(request, response) {
   try {
-    const { agencyId } = request.body;
+    const { agencyId, month } = request.body;
 
-    // Check if the collections exist for the given agencyId
-    const collections = await mongoose.connection.db
-      .listCollections()
-      .toArray();
+    // Convert month name to a numerical value
+    const monthNames = [
+      "january", "february", "march", "april", "may", "june",
+      "july", "august", "september", "october", "november", "december"
+    ];
+    const monthIndex = monthNames.indexOf(month.toLowerCase()); // Convert to lowercase for case-insensitive matching
 
-    const agencyCollectionExists = collections.some(
-      (col) => col.name === `agency_${agencyId}`,
-    );
-    const agencyDifferenceCollectionExists = collections.some(
-      (col) => col.name === `agencydifference_${agencyId}`,
-    );
+    if (monthIndex === -1) {
+      return response.status(400).json({
+        error: `Invalid month name: ${month}`,
+        success: false,
+      });
+    }
 
-    // If either collection does not exist, return an error
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+
+    // Get first day of the given month
+    const firstDay = new Date(currentYear, monthIndex, 1); // 1st of the month
+
+    // Get last day of the given month or today if it's the current month
+    let lastDay;
+    if (currentDate.getMonth() === monthIndex) {
+      lastDay = currentDate; // Today if it's the same month
+    } else {
+      lastDay = new Date(currentYear, monthIndex + 1, 0); // Last day of the month
+    }
+
+    // Check if collections exist
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    const agencyCollectionExists = collections.some(col => col.name === `agency_${agencyId}`);
+    const agencyDifferenceCollectionExists = collections.some(col => col.name === `agencydifference_${agencyId}`);
+
     if (!agencyCollectionExists || !agencyDifferenceCollectionExists) {
       return response.status(404).json({
         error: `Collections for agencyId ${agencyId} do not exist`,
@@ -175,47 +262,58 @@ export async function getAgencyRecordByAgencyId(request, response) {
       });
     }
 
+    // Fetch data from MongoDB
     const AgencyModel = createAgencyModel(agencyId);
     const agencyData = await AgencyModel.find().exec();
 
     const AgencyDifferenceModel = createAgencyDifferenceModel(agencyId);
     const agencyDifferenceData = await AgencyDifferenceModel.find().exec();
 
-    const formattedAgencyData = agencyData.map((record) => ({
+    // Filter data based on the date range
+    const filteredAgencyData = agencyData.filter(record => {
+      const recordDate = new Date(record.date);
+      return recordDate >= firstDay && recordDate <= lastDay;
+    });
+
+    const filteredAgencyDifferenceData = agencyDifferenceData.filter(record => {
+      const recordDate = new Date(record.date);
+      return recordDate >= firstDay && recordDate <= lastDay;
+    });
+
+    // Format and parse numeric fields
+    const formattedAgencyData = filteredAgencyData.map(record => ({
       ...record.toObject(),
       bhariye: parseFloat(record.bhariye.toString()),
     }));
 
-    const formattedAgencyDifferenceData = agencyDifferenceData.map(
-      (record) => ({
-        ...record.toObject(),
-        weight: parseFloat(record.weight.toString()),
-        totalWeight: parseFloat(record.totalWeight.toString()),
-        rate: parseFloat(record.rate.toString()),
-        value: parseFloat(record.value.toString()),
-        amount: parseFloat(record.amount.toString()),
-        difference: parseFloat(record.difference.toString()),
-      }),
-    );
+    const formattedAgencyDifferenceData = filteredAgencyDifferenceData.map(record => ({
+      ...record.toObject(),
+      weight: parseFloat(record.weight.toString()),
+      totalWeight: parseFloat(record.totalWeight.toString()),
+      rate: parseFloat(record.rate.toString()),
+      value: parseFloat(record.value.toString()),
+      amount: parseFloat(record.amount.toString()),
+      difference: parseFloat(record.difference.toString()),
+    }));
 
     return response.status(200).json({
-      message: `Records fetched successfully for agencyId ${agencyId}`,
+      message: `Records fetched successfully for agencyId ${agencyId} from ${firstDay.toISOString()} to ${lastDay.toISOString()}`,
       agencyData: formattedAgencyData,
       agencyDifferenceData: formattedAgencyDifferenceData,
       error: false,
       success: true,
     });
   } catch (error) {
-    console.error(
-      `Error in fetching record for the agencyId ${agencyId}: `,
-      error,
-    );
+    console.error(`Error in fetching record for agencyId ${agencyId}: `, error);
     response.status(500).json({
       error: "Internal Server Error",
       success: false,
     });
   }
 }
+
+
+
 
 export async function updateAgencyRecord(request, response) {
   try {
