@@ -13,7 +13,7 @@ dotenv.config()
 const app = express();
 app.use(cors({
   credentials:true,
-  origin:"https://pressledger.vercel.app/"
+  origin:"https://pressledger.vercel.app"
 }));
 
 app.use(express.json())
