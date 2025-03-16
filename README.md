@@ -103,5 +103,3 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 👤 **Shashank Jaiswal**  
 📧 [Email](shashankjaiswal266@gmail.com)
 🔗 [Portfolio](https://portfolio-ndck.vercel.app/)  
-
-Feel free to modify this README as needed! 🚀
